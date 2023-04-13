@@ -1,0 +1,27 @@
+# Modify these variables to suit your configuration and region
+
+# Version of OpenShift command oc and openshift-install
+RELEASE=4.12.0-0.okd-2023-03-18-084815
+# AWS Location for DNS
+LOCATION=india
+# Base DNS service
+BASEDOMAIN=openshift.conygre.com
+# AWS Region to deploy in
+REGION=ap-south
+# Instance type of Control Plane
+#CPTYPE=m6g.xlarge # m6i is original
+CPTYPE=m6i.xlarge
+# Number of Control Planes
+CPLANES=3
+# Control Plane disk size in GB
+CPDISKGB=120
+# Worker node Instance type
+WORKTYPE=$CPTYPE
+# Number of worker nodes
+WORKERS=5
+# Worker node disk size in GB
+WORKDISKGB=120
+# AMI to use for the instances
+AMI=ami-015c7f5a6509ddb03
+
+export RELEASE LOCATION BASEDOMAIN REGION CPTYPE CPLANES CPDISKGB WORKTYPE WORKERS WORKDISKGB AMI

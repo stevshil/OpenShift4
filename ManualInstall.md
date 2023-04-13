@@ -1,6 +1,10 @@
 # Install OpenShift 4 on AWS
 
+Only use this method if you are fully familiar with AWS.
+
 ## Pre-requisites
+
+### Not the best way
 
 You will need an AWS Access Key and Secret.  This is obtained through IAM/Users/YourUserName if you have access.  Scroll down to **Access Keys**. Click the **Generate access key** button.
 
@@ -13,15 +17,31 @@ Default region name [None]: ap-south-1
 Default output format [None]: json
 ```
 
+### The better way
+
+**However** you may choose to create an IAM Machine Profile so that you don't have to keep an access key.
+
+- Go to **IAM/Roles**
+- Click **Create role**
+- Select **AWS Service**
+- Under **Use case** select **EC2**
+- Click **Next**
+- In the **Permissions policies** type **Administrator** and press **Enter**
+- Select **AdministratorAccess** with the tickbox
+- Click **Next**
+- **Role Name** call it **OpenShift4Install**
+- Click **Add tag** button and type **Name** for Key and **OpenShift 4 Role** for value
+- Click **Create role**
+
+**NOTE** This is a one time creation for each region.
+
+This role should then be attached to the VM that is used to run the **openshift-install** command.
+
 ## The provisioning VM
 
-1. t2.micro with 25GB RAM
+1. t2.micro with 25GB disk and attach the role **OpenShift4Install**
 2. Security group with the following open to all
     - 22/SSH
-    - 80/HTTP
-    - 443/HTTPS
-    - 8080
-    - 8443
     - All traffic to 172.31.0.0/16
 3. SSH Key
     ```bash

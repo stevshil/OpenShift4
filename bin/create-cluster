@@ -1,0 +1,132 @@
+#!/bin/bash
+
+# Set up the environment variabls
+. $HOME/bin/env
+
+if [[ ! -e $HOME/.aws/credentials ]]
+then
+  if ! grep aws_secret_access_key $HOME/.aws/credentials >/dev/null 2>&1
+  then
+    echo "Please enter your AWS Credentials"
+    echo -n "ACCESS KEY: "
+    read access_key
+    echo -n "SECRET KEY: "
+    read secret_key
+  fi
+fi
+
+cat >$HOME/.aws/config <<_EOF
+[default]
+region = ${REGION}
+output = json
+_EOF
+
+cat >$HOME/.aws/credentials <<_EOF
+[default]
+aws_access_key_id = ${access_key}
+aws_secret_access_key = ${secret_key}
+_EOF
+
+# Generate an SSH key pair to use for the cluster
+# You will be able to ssh to the cluster from this host
+if [[ ! -e $HOME/.ssh/id_rsa ]]
+then
+  ssh-keygen -b 2048 -t rsa -f $HOME/.ssh/id_rsa -q -N ""
+  echo "Host *
+StrictHostKeyChecking no
+UserKnownHostsFile /dev/null" >$HOME/.ssh/config
+fi
+
+SSHKEY="$(cat $HOME/.ssh/id_rsa.pub)"
+export SSHKEY
+
+# Check that the oc, kubectl and openshift-install commands are installed
+if [[ ! -e /usr/bin/oc ]]
+then
+  cd /var/tmp
+  wget https://github.com/okd-project/okd/releases/download/$RELEASE/openshift-client-linux-$RELEASE.tar.gz
+  wget https://github.com/okd-project/okd/releases/download/$RELEASE/openshift-install-linux-$RELEASE.tar.gz
+  tar xvf openshift-client-linux-$RELEASE.tar.gz
+  tar xvf openshift-install-linux-$RELEASE.tar.gz
+  mv kubectl oc openshift-install /usr/bin
+  rm -f *.tar.gz README.md
+  if [[ ! -e /usr/bin/oc ]]
+  then
+    echo "oc command not installed, please check $RELEASE is valid" 1>&2
+    exit 1
+  fi
+  if [[ ! -e /usr/bin/openshift-install ]]
+  then
+    echo "openshift-install not installed, please check $RELEASE is valid" 1>&2
+    exit 2
+  fi
+fi
+
+if [[ -e $HOME/openshift/install_dir/.openshift_install.log ]]
+then
+  echo "A previous installation exists, $HOME/openshift/install_dir/.openshift_install.log exists" 1>&2
+  echo "Ensure that the old cluster has been removed" 1>&2
+  echo "Then remove the directory /openshift" 1>&2
+  exit 3
+fi
+
+# Create the cluster configuration file
+mkdir -p $HOME/openshift/install_dir $HOME/openshift/original
+cat <<_EOF >$HOME/openshift/install_dir/install-config.yaml
+apiVersion: v1
+baseDomain: $BASEDOMAIN
+metadata:
+  creationTimestamp: null
+  name: $LOCATION 
+controlPlane:   
+  architecture: amd64
+  hyperthreading: Enabled 
+  name: master
+  platform: {}
+  replicas: $CPLANES
+compute: 
+- hyperthreading: Enabled 
+  architecture: amd64
+  name: worker
+  platform: {}
+  replicas: $WORKERS
+networking:
+  clusterNetwork:
+  - cidr: 10.128.0.0/14
+    hostPrefix: 23
+  machineNetwork:
+  - cidr: 10.0.0.0/16
+  networkType: OVNKubernetes
+  serviceNetwork:
+  - 172.30.0.0/16
+platform:
+  aws:
+    region: ${REGION}
+    amiID: $AMI
+publish: External
+fips: false 
+pullSecret: '{"auths":{"fake":{"auth": "bar"}}}' 
+sshKey: |
+  $SSHKEY
+_EOF
+cp $HOME/openshift/install_dir/install-config.yaml $HOME/openshift/original
+
+# HTPassword data for finishing cluster and making users
+cat <<_EOF >$HOME/openshift/htpasswd
+admin:\$apr1\$XpV8XpLt\$3V6wIySh17gzxjXHFtTcs1
+developer:\$apr1\$wukRz8Ub\$l1RDzxyRbX6U3WCBrn/xY0
+_EOF
+
+# Install cluster
+cd $HOME/openshift
+nohup openshift-install create cluster --dir install_dir --log-level info &
+
+echo "Cluster is installing, use:"
+echo "If your terminal does lock, just log back in and do the following:"
+echo "tail -f $HOME/openshift/install_dir/.openshift_install.log"
+echo "At the end of the install if successful you will see:"
+echo "INFO Time elapsed: 35m39s"
+echo "You should also see the URL for the Web console and the password"
+tail -f $HOME/openshift/install_dir/.openshift_install.log
+
+# Persistent storage https://aws.amazon.com/blogs/storage/scaling-container-workloads-with-shared-storage-for-red-hat-openshift-service-on-aws/

@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Use this script to add the administrator and developer logins
+# Add htpasswd oauth - https://docs.openshift.com/container-platform/4.12/authentication/identity_providers/configuring-htpasswd-identity-provider.html
+
+if ! oc create secret generic htpass-secret --from-file=htpasswd=$HOME/openshift/htpasswd -n openshift-config
+then
+    echo "Failed to add classroom users to OpenShift" 1>&2
+    exit 1
+fi
+
+cat >$HOME/openshift/htpasswd-oauth.yaml <<_EOF
+apiVersion: config.openshift.io/v1
+kind: OAuth
+metadata:
+  name: cluster
+spec:
+  identityProviders:
+  - name: classroom
+    mappingMethod: claim
+    type: HTPasswd
+    htpasswd:
+      fileData:
+        name: htpass-secret
+_EOF
+
+if ! oc apply -f $HOME/openshift/htpasswd-oauth.yaml
+then
+    echo "Failed to create the oauth requirement for classroom users"
+    exit 2
+fi

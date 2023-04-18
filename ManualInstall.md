@@ -274,3 +274,7 @@ INFO Time elapsed: 6m32s
 
 Started at 13:50
 Finished at 13:59
+
+# Monitoring
+
+You can watch the installation through the **install_dir/.openshift_install.log** as well as the output on stdout.

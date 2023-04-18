@@ -14,6 +14,15 @@ then
     exit 2
 fi
 
+if [[ ! -e $HOME/openshift/install_dir/auth/kubeconfig ]]
+then
+    echo "There is no OpenShift configuration in $HOME/openshift/install_dir" 1>&2
+    exit 3
+else
+    KUBECONFIG=$HOME/openshift/install_dir/auth/kubeconfig
+    export KUBECONFIG
+fi
+
 for node in $(oc get nodes -o jsonpath='{.items[*].metadata.name}')
 do 
     oc debug node/${node} -- chroot /host shutdown -h $1

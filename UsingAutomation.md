@@ -4,45 +4,50 @@ This method makes use of some shell scripts to build the cluster.
 
 ## Pre-requisites
 
-1. $HOME/.aws/config and $HOME/.aws/credentials
+Before you begin you should check that your AWS account has a user called **OpenShiftAdmin**.  If not create this user and also create the Security credentials **Access Key**.
 
-## Creating the AWS credentials
+**NOTE:** The user does not need console access, and the key should be for the CLI.
 
-The script will prompt you to set up the AWS config and credentials if the $HOME/.aws/credentials file does not exist.
+You should create 2 **Parameter Store** keys that will contain the **Access Key** values.  This can be done as follows;
 
-## Doing it yourself
+- In the **Search** text box next to **Services** type in **Parameter Store** and click **Parameter Store**
+- Click **Create parameter** button
+- For the Access ID
+  - Enter the name **/OpenShiftAdmin/AccessId**
+  - Leave as **Standard**
+  - Leave Type as **String**
+  - Leave Data type as **Text**
+  - In **Value** paste in your Access Id from the Access Key.
+  - Click **Create parameter**
+- For the Secret Key
+  - Enter the name **/OpenShiftAdmin/Secret**
+  - Leave as **Standard**
+  - Change Type to **SecureString**
+  - KMS key store leave as **My current account**
+  - Leave KMS Key ID as is
+  - In the **Value** paste in your Secret Key from the Access Key.
 
-### Using the command line
+## Create the Instance Role
 
-Either run the command ```aws configure``` and answer the questions
-  - region = The region you are creating the cluster in, e.g. ap-south-1
-  - output = json
-  - aws access key = The access key you have been provided
-  - aws secret key = The secret key you have been provided, this is the longer of the 2
+This will be the role that is required by the EC2 Instance to access elements of AWS as an Administrator.
 
-### Alternatively creating the files
+If the role **OpenShiftAdmin** does not exist in your AWS system then run the **[create-role](bin/create-role)** script, or manually create the role as an Instance role.
 
-**The config file**
+### Creating the IAM role manually
 
-```
-cat >$HOME/.aws/config <<_EOF
-[default]
-region = ap-south-1
-output = json
-_EOF
-```
+**NOTE** This is a one time creation for each region.
 
-**The credentials file**
-
-```
-cat >$HOME/.aws/credentials <<_EOF
-[default]
-aws_access_key_id = **************
-aws_secret_access_key = ****************
-_EOF
-```
-
-Replace the ************* with your values
+- Go to **IAM/Roles**
+- Click **Create role**
+- Select **AWS Service**
+- Under **Use case** select **EC2**
+- Click **Next**
+- In the **Permissions policies** type **Administrator** and press **Enter**
+- Select **AdministratorAccess** with the tickbox
+- Click **Next**
+- **Role Name** call it **OpenShift4Install**
+- Click **Add tag** button and type **Name** for Key and **OpenShift 4 Role** for value
+- Click **Create role**
 
 ## Creating the EC2 instance
 
@@ -56,7 +61,7 @@ Here you should follow your normal method for launching an EC2 instance (you may
 - Select an existing security group with SSH or if there is none create one
 - Configure storage change size to **20**
 - Expand **Advanced details**
-- In the **IAM instance profile** click the pull down and select your **OpenShift4Install** IAM role
+- In the **IAM instance profile** click the pull down and select your **OpenShiftAdmin** IAM role
 - Click **Launch instance**
 
 ## Copy bin directory to EC2 instance
@@ -100,7 +105,13 @@ There are other scripts in the **bin** directory which allow you to;
         ```
   - Shutting down the cluster
     ```
-    shutdown-cluster 10
+    shutdown-cluster
+    ```
+    This will default to 12 hour shutdown period (the number of hours is something openshift needs).
+
+    To change the number of hours the cluster will be down add the number as a parameter;
+    ```
+    shutdown-cluster 5
     ```
 
 ### Building a new cluster

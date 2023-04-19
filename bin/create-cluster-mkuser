@@ -1,15 +1,43 @@
 #!/bin/bash
 
+function oscleanup {
+  key_id=$(aws iam list-access-keys --user-name OpenShiftAdmin | grep AccessKeyId | awk '{print $2}' | sed 's/[",]//g')
+  aws iam delete-access-key --access-key-id $key_id --user-name OpenShiftAdmin
+  rm -rf $HOME/.aws
+}
 
 # Set up the environment variabls
 . $HOME/bin/env
 
-# Get AWS ACCESS
-AWS_ACCESS_KEY_ID=$(aws ssm get-parameter --name "/OpenShiftAdmin/AccessId" --query "Parameter.Value")
-AWS_ACCESS_KEY_ID=$(echo $AWS_ACCESS_KEY_ID | sed 's/"//g')
-AWS_SECRET_ACCESS_KEY=$(aws ssm get-parameter --name "/OpenShiftAdmin/Secret" --with-decryption --query "Parameter.Value")
-AWS_SECRET_ACCESS_KEY=$(echo $AWS_SECRET_ACCESS_KEY | sed 's/"//g')
-export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
+# Create user account for install
+if ! (aws iam get-user --user-name OpenShiftAdmin | grep UserId)
+then
+  aws iam create-user --user-name OpenShiftAdmin --permissions-boundary arn:aws:iam::aws:policy/AdministratorAccess
+
+  # Assign Admin role
+  aws iam attach-user-policy --user-name OpenShiftAdmin --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
+fi
+
+if aws iam list-access-keys --user-name OpenShiftAdmin | grep '\[\]'
+then
+  keydata=$(aws iam create-access-key --user-name OpenShiftAdmin)
+  access_key=$(echo "$keydata" | grep AccessKeyId | awk '{print $2}' | sed 's/[",]//g')
+  secret_key=$(echo "$keydata" | grep SecretAccessKey | awk '{print $2}' | sed 's/[",]//g')
+fi
+
+[[ -d $HOME/.aws ]] || mkdir $HOME/.aws
+
+cat >$HOME/.aws/config <<_EOF
+[default]
+region = ${REGION}
+output = json
+_EOF
+
+cat >$HOME/.aws/credentials <<_EOF
+[default]
+aws_access_key_id = ${access_key}
+aws_secret_access_key = ${secret_key}
+_EOF
 
 # Generate an SSH key pair to use for the cluster
 # You will be able to ssh to the cluster from this host
@@ -37,11 +65,13 @@ then
   if [[ ! -e /usr/bin/oc ]]
   then
     echo "oc command not installed, please check $RELEASE is valid" 1>&2
+    oscleanup
     exit 1
   fi
   if [[ ! -e /usr/bin/openshift-install ]]
   then
     echo "openshift-install not installed, please check $RELEASE is valid" 1>&2
+    oscleanup
     exit 2
   fi
 fi
@@ -51,6 +81,7 @@ then
   echo "A previous installation exists, $HOME/openshift/install_dir/.openshift_install.log exists" 1>&2
   echo "Ensure that the old cluster has been removed" 1>&2
   echo "Then remove the directory /openshift" 1>&2
+  oscleanup
   exit 3
 fi
 
@@ -123,5 +154,7 @@ do
     add-login
   fi
 done
+
+oscleanup
 
 # Persistent storage https://aws.amazon.com/blogs/storage/scaling-container-workloads-with-shared-storage-for-red-hat-openshift-service-on-aws/

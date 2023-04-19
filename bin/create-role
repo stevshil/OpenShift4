@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Create the OpenShift install admin role
+
+if ! (aws iam get-role --role-name OpenShiftAdmin | grep RoleName)
+then
+    aws iam create-role --role-name OpenShiftAdmin --assum-role-policy-document file://trust-policy.json
+    aws iam attach-role-policy --policy-arn arn:aws:iam::aws:policy/AdministratorAccess --role-name OpenShiftAdmin
+    aws iam create-instance-profile --instance-profile-name OpenShiftAdmin
+    aws iam add-role-to-instance-profile --instance-profile-name OpenShiftAdmin --role-name OpenShiftAdmin
+else
+    echo "Role OpenShiftAdmin already exists"
+fi

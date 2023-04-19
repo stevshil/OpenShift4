@@ -2,16 +2,9 @@
 
 if (( $# < 1 ))
 then
-    echo "Please specify a time length in hours that the cluster will be down" 1>&2
-    echo "SYNTAX: $0 10" 1>&2
-    exit 1
-fi
-
-if echo "$1" | grep -v "^$1\$"
-then
-    echo "Please enter a number" 1>&2
-    echo "SYNTAX: $0 10" 1>&2
-    exit 2
+    outagehours=12
+else
+    outagehours=$1
 fi
 
 if [[ ! -e $HOME/openshift/install_dir/auth/kubeconfig ]]
@@ -25,5 +18,5 @@ fi
 
 for node in $(oc get nodes -o jsonpath='{.items[*].metadata.name}')
 do 
-    oc debug node/${node} -- chroot /host shutdown -h $1
+    oc debug node/${node} -- chroot /host shutdown -h $outagehours
 done 

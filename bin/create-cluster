@@ -112,7 +112,7 @@ echo "At the end of the install if successful you will see:"
 echo "INFO Time elapsed: 35m39s"
 echo "You should also see the URL for the Web console and the password"
 sleep 5
-tail -f $HOME/openshift/install_dir/.openshift_install.log
+tail -f $HOME/openshift/install_dir/.openshift_install.log &
 
 while ps -ef | grep -v grep | grep openshift-install >/dev/null 2>&1
 do
@@ -121,6 +121,7 @@ do
   if grep "Login to the console" $HOME/openshift/install_dir/.openshift_install.log >/dev/null 2>&1
   then
     add-login
+    pkill tail
   fi
 done
 

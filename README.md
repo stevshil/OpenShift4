@@ -25,3 +25,28 @@ The web console should look as follows, once htpasswd has been configured;
 ![Web console with htpasswd](images/OpenShiftConsoleLogin.png)
 
 Use the **classroom** to log on as **developer**
+
+## Your own environment
+
+To build your own environment you should do the following;
+
+**For the AWS account:**
+
+- Create a User called **OpenShiftAdmin**, no console access
+- Create the Access Key for that user CLI only
+- Create the 2 parameter store values for the keys **/OpenShiftAdmin/AccessId** and **/OpenShiftAdmin/Secret**
+- Create the **OpenShiftAdmin** role with instance profile
+
+**For the region**
+
+- Create the EC2 instance and assign the profile (or if we make an AMI it will just be launch the instance and add the IAM role)  - Cloudformation could do this, or terraform
+- Copy the bin directory from https://github.com/stevshil/OpenShift4 onto the server (but will be there if we make an image)
+
+**For each cluster build per region**
+
+- Modify the **bin/env** to build the cluster for the region
+- Run **create-cluster** command
+
+**NOTE**
+
+The VM must remain in place but not up while the cluster lives, as it contains the terraform information that is required to destroy the cluster, which delete-cluster uses.

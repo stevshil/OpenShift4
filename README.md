@@ -9,8 +9,10 @@ This repository shows;
 Once your cluster is built you'll see in the output, or in the log file .openshift_install.log the URL and credentials for the kubeadmin.
 
 After the **add-login** script has been executed you will have the following user;
-- developer
+- student*n*
 - admin
+
+Where *n* is a number of students.
 
 With password of c0nygre.
 

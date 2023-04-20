@@ -16,5 +16,5 @@ nohup openshift-install destroy cluster --dir ./install_dir --log-level info &
 echo "Destroy is running in background in case terminal hangs"
 echo "If terminal hangs log back in and run the following;"
 echo "tail -f $HOME/openshift/nohup.out"
-tail -f $HOME/openshift/nohup.out
 rm -rf $HOME/.kube
+tail -f $HOME/openshift/nohup.out &

@@ -1,8 +1,13 @@
 #!/bin/bash
 
+# This script is idemoptent, so can be run again if the build fails.
 
 # Set up the environment variabls
 . $HOME/bin/env
+
+function oscleanup {
+  rm -rf $HOME/.aws
+}
 
 # Get AWS ACCESS
 AWS_ACCESS_KEY_ID=$(aws ssm get-parameter --name "/OpenShiftAdmin/AccessId" --query "Parameter.Value")
@@ -10,6 +15,14 @@ AWS_ACCESS_KEY_ID=$(echo $AWS_ACCESS_KEY_ID | sed 's/"//g')
 AWS_SECRET_ACCESS_KEY=$(aws ssm get-parameter --name "/OpenShiftAdmin/Secret" --with-decryption --query "Parameter.Value")
 AWS_SECRET_ACCESS_KEY=$(echo $AWS_SECRET_ACCESS_KEY | sed 's/"//g')
 export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
+
+[[ -d $HOME/.aws ]] || mkdir $HOME/.aws
+
+cat >$HOME/.aws/config <<_EOF
+[default]
+region = ${REGION}
+output = json
+_EOF
 
 # Generate an SSH key pair to use for the cluster
 # You will be able to ssh to the cluster from this host
@@ -37,26 +50,31 @@ then
   if [[ ! -e /usr/bin/oc ]]
   then
     echo "oc command not installed, please check $RELEASE is valid" 1>&2
+    oscleanup
     exit 1
   fi
   if [[ ! -e /usr/bin/openshift-install ]]
   then
     echo "openshift-install not installed, please check $RELEASE is valid" 1>&2
+    oscleanup
     exit 2
   fi
 fi
 
-if [[ -e $HOME/openshift/install_dir/.openshift_install.log ]]
+if [[ ! -e $HOME/openshift/install_dir/terraform.cluster.tfstate ]]
 then
-  echo "A previous installation exists, $HOME/openshift/install_dir/.openshift_install.log exists" 1>&2
-  echo "Ensure that the old cluster has been removed" 1>&2
-  echo "Then remove the directory /openshift" 1>&2
-  exit 3
-fi
+  if [[ -e $HOME/openshift/install_dir/.openshift_install.log ]]
+  then
+    echo "A previous installation exists, $HOME/openshift/install_dir/.openshift_install.log exists" 1>&2
+    echo "Ensure that the old cluster has been removed" 1>&2
+    echo "Then remove the directory /openshift" 1>&2
+    oscleanup
+    exit 3
+  fi
 
-# Create the cluster configuration file
-mkdir -p $HOME/openshift/install_dir $HOME/openshift/original
-cat <<_EOF >$HOME/openshift/install_dir/install-config.yaml
+  # Create the cluster configuration file
+  mkdir -p $HOME/openshift/install_dir $HOME/openshift/original
+  cat <<_EOF >$HOME/openshift/install_dir/install-config.yaml
 apiVersion: v1
 baseDomain: $BASEDOMAIN
 metadata:
@@ -66,13 +84,25 @@ controlPlane:
   architecture: amd64
   hyperthreading: Enabled 
   name: master
-  platform: {}
+  platform:
+    aws:
+      rootVolume:
+        iops: 3000
+        size: $CPDISKGB
+        type: gp3
+      type: $CPTYPE
   replicas: $CPLANES
 compute: 
 - hyperthreading: Enabled 
   architecture: amd64
   name: worker
-  platform: {}
+  platform:
+    aws:
+      rootVolume:
+        iops: 3000
+        size: $WORKDISKGB
+        type: gp3
+      type: $WORKTYPE
   replicas: $WORKERS
 networking:
   clusterNetwork:
@@ -93,13 +123,17 @@ pullSecret: '{"auths":{"fake":{"auth": "bar"}}}'
 sshKey: |
   $SSHKEY
 _EOF
-cp $HOME/openshift/install_dir/install-config.yaml $HOME/openshift/original
 
-# HTPassword data for finishing cluster and making users
-cat <<_EOF >$HOME/openshift/htpasswd
-admin:\$apr1\$XpV8XpLt\$3V6wIySh17gzxjXHFtTcs1
-developer:\$apr1\$wukRz8Ub\$l1RDzxyRbX6U3WCBrn/xY0
-_EOF
+  # HTPassword data for finishing cluster and making users
+  echo "admin:\$apr1\$XpV8XpLt\$3V6wIySh17gzxjXHFtTcs1" >$HOME/openshift/htpasswd
+  counter=1
+  while (( counter <= $STUDENTS ))
+  do
+    echo "student${counter}:\$apr1\$wukRz8Ub\$l1RDzxyRbX6U3WCBrn/xY0"
+  done >>$HOME/openshift/htpasswd
+fi
+
+cp $HOME/openshift/install_dir/install-config.yaml $HOME/openshift/original
 
 # Install cluster
 cd $HOME/openshift
@@ -114,15 +148,35 @@ echo "You should also see the URL for the Web console and the password"
 sleep 5
 tail -f $HOME/openshift/install_dir/.openshift_install.log &
 
-while ps -ef | grep -v grep | grep openshift-install >/dev/null 2>&1
+counter=0
+while ps -ef | grep -v grep | grep "openshift-install create cluster" >/dev/null 2>&1
 do
   # Wait for openshift installer to end or fail
   sleep 60
   if grep "Login to the console" $HOME/openshift/install_dir/.openshift_install.log >/dev/null 2>&1
   then
+    echo "Installation completed successfully, adding logins to OpenShift"
+    export KUBECONFIG=$HOME/openshift/install_dir/auth/kubeconfig
     add-login
     pkill tail
+    break
+  fi
+  # Set a time out to fail
+  if grep "Waiting up to .* for the cluster at https://api" $HOME/openshift/install_dir/.openshift_install.log >/dev/null 2>&1
+  then
+    if (( counter == 0 ))
+    then
+      echo "Starting timer for cluster completion"
+    fi
+    if (( counter == 42 ))
+    then
+      echo "Cluster build has failed, check the logs" 1>&2
+      exit 4
+    fi
+    (( counter = counter + 1 ))
   fi
 done
 
+oscleanup
+echo "Installation has ended"
 # Persistent storage https://aws.amazon.com/blogs/storage/scaling-container-workloads-with-shared-storage-for-red-hat-openshift-service-on-aws/

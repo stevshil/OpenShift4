@@ -1,5 +1,9 @@
 # Modify these variables to suit your configuration and region
 
+# Class information
+# Number of students
+STUDENTS=60
+
 # Version of OpenShift command oc and openshift-install
 RELEASE=4.12.0-0.okd-2023-03-18-084815
 # AWS Location for DNS
@@ -10,15 +14,16 @@ BASEDOMAIN=openshift.conygre.com
 REGION=ap-south-1
 # Instance type of Control Plane
 #CPTYPE=m6g.xlarge # m6i is original
-CPTYPE=m6i.xlarge
+# m7g.xlarge = $0.1819 eu-west-1 04/2023
+CPTYPE=m7g.xlarge
 # Number of Control Planes
-CPLANES=3
+CPLANES=2
 # Control Plane disk size in GB
 CPDISKGB=120
 # Worker node Instance type
 WORKTYPE=$CPTYPE
 # Number of worker nodes
-WORKERS=5
+WORKERS=3
 # Worker node disk size in GB
 WORKDISKGB=120
 # AMI to use for the instances

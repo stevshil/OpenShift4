@@ -130,6 +130,7 @@ _EOF
   while (( counter <= $STUDENTS ))
   do
     echo "student${counter}:\$apr1\$wukRz8Ub\$l1RDzxyRbX6U3WCBrn/xY0"
+    (( counter = counter + 1 ))
   done >>$HOME/openshift/htpasswd
 fi
 

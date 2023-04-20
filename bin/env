@@ -14,7 +14,8 @@ BASEDOMAIN=openshift.conygre.com
 REGION=ap-south-1
 # Instance type of Control Plane
 #CPTYPE=m6g.xlarge # m6i is original
-# m7g.xlarge = $0.1819 eu-west-1 04/2023
+# m7g.xlarge = $0.1819 eu-west-1 04/2023 $0.1632 in us-east-1
+# m6a.xlarge = $0.1111 ap-south-1 04/2023
 CPTYPE=m7g.xlarge
 # Number of Control Planes
 CPLANES=2

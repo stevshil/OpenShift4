@@ -11,12 +11,18 @@ LOCATION=india
 # Base DNS service
 BASEDOMAIN=openshift.conygre.com
 # AWS Region to deploy in
-REGION=eu-west-1
+REGION=$(ec2-metadata --availability-zone | sed 's/.$//' | awk '{print $2}')
 # Instance type of Control Plane
 #CPTYPE=m6g.xlarge # m6i is original
 # m7g.xlarge = $0.1819 eu-west-1 04/2023 $0.1632 in us-east-1
 # m6a.xlarge = $0.1111 ap-south-1 04/2023
-CPTYPE=m7g.xlarge
+case $REGION in
+    ap-south-1) CPTYPE=m6a.xlarge
+                ;;
+    *)  CPTYPE=m7g.xlarge
+                ;;
+esac
+# CPTYPE=m7g.xlarge
 # Number of Control Planes
 CPLANES=2
 # Control Plane disk size in GB

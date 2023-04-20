@@ -11,7 +11,7 @@ LOCATION=india
 # Base DNS service
 BASEDOMAIN=openshift.conygre.com
 # AWS Region to deploy in
-REGION=ap-south-1
+REGION=eu-west-1
 # Instance type of Control Plane
 #CPTYPE=m6g.xlarge # m6i is original
 # m7g.xlarge = $0.1819 eu-west-1 04/2023 $0.1632 in us-east-1

@@ -7,6 +7,7 @@
 
 function oscleanup {
   rm -rf $HOME/.aws
+  pkill tail
 }
 
 # Get AWS ACCESS

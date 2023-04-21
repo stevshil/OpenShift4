@@ -3,6 +3,10 @@
 # Class information
 # Number of students
 STUDENTS=60
+CUSTOMER=TPS
+CUSTOMERID=123
+COURSEID=123
+HOSTTYPE=openshift
 
 # Version of OpenShift command oc and openshift-install
 RELEASE=4.12.0-0.okd-2023-03-18-084815
@@ -33,7 +37,7 @@ WORKTYPE=$CPTYPE
 WORKERS=3
 # Worker node disk size in GB
 WORKDISKGB=120
-# AMI to use for the instances
-AMI=ami-015c7f5a6509ddb03
+# AMI to use for the instances, below is india
+# AMI=ami-015c7f5a6509ddb03
 
 export RELEASE LOCATION BASEDOMAIN REGION CPTYPE CPLANES CPDISKGB WORKTYPE WORKERS WORKDISKGB AMI

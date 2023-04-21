@@ -116,7 +116,12 @@ networking:
 platform:
   aws:
     region: ${REGION}
-    amiID: $AMI
+    userTags:
+      CourseName: ${CUSTOMER} OpenShift ${LOCATION}
+      Customer: ${CUSTOMER}
+      CourseId: ${COURSEID}
+      CustomerId: ${CUSTOMERID}
+      HostType: ${HOSTTYPE}
 publish: External
 fips: false 
 pullSecret: '{"auths":{"fake":{"auth": "bar"}}}' 

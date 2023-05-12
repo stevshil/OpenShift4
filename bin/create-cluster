@@ -15,7 +15,8 @@ AWS_ACCESS_KEY_ID=$(aws ssm get-parameter --name "/OpenShiftAdmin/AccessId" --qu
 AWS_ACCESS_KEY_ID=$(echo $AWS_ACCESS_KEY_ID | sed 's/"//g')
 AWS_SECRET_ACCESS_KEY=$(aws ssm get-parameter --name "/OpenShiftAdmin/Secret" --with-decryption --query "Parameter.Value")
 AWS_SECRET_ACCESS_KEY=$(echo $AWS_SECRET_ACCESS_KEY | sed 's/"//g')
-export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
+AWS_REGION=${REGION}
+export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_REGION
 
 [[ -d $HOME/.aws ]] || mkdir $HOME/.aws
 
@@ -37,6 +38,12 @@ fi
 
 SSHKEY="$(cat $HOME/.ssh/id_rsa.pub)"
 export SSHKEY
+
+# Check jq is installed
+if [[ ! -e /usr/bin/jq ]]
+then
+  yum -y install jq
+fi
 
 # Check that the oc, kubectl and openshift-install commands are installed
 if [[ ! -e /usr/bin/oc ]]
@@ -72,6 +79,9 @@ then
     oscleanup
     exit 3
   fi
+
+  # Get AMI ID for region using openshift-install
+  AMI=$(openshift-install coreos print-stream-json | jq -r --arg REGION "${REGION}" '.architectures.x86_64.images.aws.regions[$REGION].image')
 
   # Create the cluster configuration file
   mkdir -p $HOME/openshift/install_dir $HOME/openshift/original
@@ -117,6 +127,7 @@ networking:
 platform:
   aws:
     region: ${REGION}
+    amiID: ${AMI}
     userTags:
       CourseName: ${CUSTOMER} OpenShift ${LOCATION}
       Customer: ${CUSTOMER}
